@@ -25,12 +25,12 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:39092
       DYNAMIC_CONFIG_ENABLED: 'true'
-    ports: 
-        - 8080:8080
-    networks: 
-        - tap
+    ports:
+      - 8080:8080
+    networks:
+      - tap
     depends_on:
-        - kafka
+      - kafka
 
   kafka:
     image: confluentinc/cp-kafka:5.4.1
@@ -52,7 +52,7 @@ services:
 
   fluentbit:
     image: fluent/fluent-bit:1.8
-    ports: 
+    ports:
       - 9090:9090
     volumes:
       - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
@@ -90,7 +90,7 @@ services:
     networks:
       - tap
     depends_on:
-       - elasticsearch
+      - elasticsearch
 networks:
-    tap:
-        driver: bridge
+  tap:
+    driver: bridge

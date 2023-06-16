@@ -1,5 +1,6 @@
 import requests
 import json
+import time
 from dotenv import load_dotenv
 from igdb_api_python import igdb
 import os
@@ -8,10 +9,7 @@ import datetime
 
 load_dotenv()
 
-
-client_id_key = os.getenv("client_id")
-client_id_secret = os.getenv("client_secret")
-code = os.getenv("code")
+auth_url = "https://id.twitch.tv/oauth2/token?"
 
 
 def write_data_to_csv(file_path, data):
@@ -19,8 +17,11 @@ def write_data_to_csv(file_path, data):
         writer = csv.writer(file)
         writer.writerow(data)
 
-auth_url = "https://id.twitch.tv/oauth2/token?"
 
+
+client_id_key = os.getenv("client_id")
+client_id_secret = os.getenv("client_secret")
+code = os.getenv("code")
 
 def write_authtoken_to_file(token):
     with open("auth_token.txt", "w") as file:
@@ -42,57 +43,10 @@ def read_clientoken_from_file():
         return file.read()
 
 
-# AUTH FOR TWITCH API ////////////////////////////////////////////////
-def auth_token():
-    auth_param = {
-        "client_id": client_id_key,
-        "client_secret": client_id_secret,
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": "http://localhost:3000",
-        "scope": "",
-    }
+def main():
 
-    # TOKEN AUTH ////////////////////////////////////////////////
-    auth_response = requests.post(auth_url, params=auth_param)
-    auth_data = json.loads(auth_response.content.decode())
-    token_auth = auth_data["access_token"]
-    expires_date = auth_data["expires_in"]
-    expires_minutes = expires_date // 60
-    print("The authorization code token.. : " + token_auth)
-    print("The token expires in.. " + str(expires_minutes) + " minutes ")
-
-    write_authtoken_to_file(token_auth)
-
-
-# CLIENT AUTH FOR IGBD API ////////////////////////////////////////////////
-def client_auth():
-    client_param = {
-        "client_id": client_id_key,
-        "client_secret": client_id_secret,
-        "grant_type": "client_credentials",
-        "code": code,
-        "redirect_uri": "http://localhost:3000",
-        "scope": "",
-    }
-
-    # CLIENT AUTH ////////////////////////////////////////////////
-    client_response = requests.post(auth_url, params=client_param)
-    client_data = json.loads(client_response.content.decode())
-    token_client = client_data["access_token"]
-    expires_date2 = client_data["expires_in"]
-    expires_minutes2 = expires_date2 // 60
-    print("The client credentials token is.. " + token_client)
-    print("The token expires in.. " + str(expires_minutes2) + " minutes ")
-
-    write_clientoken_to_file(token_client)
-
-
-def taking_datas():
-    
     totalAPI = 0
     streams_url = "https://api.twitch.tv/helix/streams?first=50"
-    excluded_game_ids = ["509658", "743", "488191","509667","518203"]
 
 
     auth_token = read_authtoken_from_file()
@@ -119,7 +73,6 @@ def taking_datas():
 
     # CICLE TO STREAM ALL THE DATAS ////////////////////////////////////////////////
     for stream in twitch_data["data"]:
-        if stream["game_id"] not in excluded_game_ids:
 
         # USER IDENTIFIER TO REFER TO FOR EACH BROADCASTER ///////////////////////////////
             user_id = stream["user_id"]
@@ -170,14 +123,22 @@ def taking_datas():
                     total_rating = None
                     release_date = None
                     genres = None
+            if aggregated_rating is None or total_rating is None or release_date is None or genres is None:
+                continue 
 
 
 
-            print("Streamer name  : " + str(stream['user_name']) + " | \nStreamer game : " + str(stream['game_name']) + " | \nTotal_Rating : " + (str(total_rating)) + " | ")
+            print("ID: " + str(stream_id) +" | \nStreamer name  : " + str(stream['user_name']) + " |\nCurrent viewers : " + str(stream['viewer_count']) +" | \nStreamer game : " + str(stream['game_name']) + " | \nTotal_Rating : " + (str(total_rating)) + " | ")
             # IGBD REQUESTS API ////////////////////////////////////////////////
+
+            timestamp = time.time()
+            datetime_object = datetime.datetime.fromtimestamp(timestamp)
+            formatted_datetime = datetime_object.strftime("%Y-%m-%d %H:%M:%S")
+            formatted_datetime = formatted_datetime
 
             data = {
                 "id": stream_id,
+                "timestamp": formatted_datetime,
                 "twitch-data": {
                     "stream": {
                         "user_id": stream["user_id"],
@@ -196,9 +157,13 @@ def taking_datas():
                     "genres" : genre_names
                 },
             }
-
+            if any(value is None for value in data.values()):
+                continue
+        
             data_row = [
+                formatted_datetime,
                 stream['user_name'],
+                stream['language'],
                 stream['game_name'],
                 stream['viewer_count'],
                 total_rating,
@@ -215,21 +180,9 @@ def taking_datas():
 
             stream_id += 1
 
-    print( totalAPI + " Data sent successfully.")
+    print( str(totalAPI) + " Data sent successfully.")
 
 
-def main():
-    while True:
-        user_input = input("Code been taken? (y/n): ")
-        if user_input.lower() == "y":
-            print("Sending the api's")
-            taking_datas()
-
-        if user_input.lower() == "n":
-            print("Making the auth and then sending api's")
-            auth_token()
-            client_auth()
-            taking_datas()
-
-
-main()
+for i in range(15):
+    main()
+    time.sleep(900)  # Sleep for 15 minutes (900 seconds)

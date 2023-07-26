@@ -17,6 +17,8 @@ services:
     container_name: "spark"
     depends_on:
       - elasticsearch
+    volumes:
+      - ./spark/data/container_data:/data/
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest

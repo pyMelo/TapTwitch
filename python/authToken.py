@@ -82,7 +82,7 @@ def client_auth():
     client_data = json.loads(client_response.content.decode())
     token_client = client_data["access_token"]
     expires_date2 = client_data["expires_in"]
-    expires_minutes2 = expires_date2 // 60
+    expires_minutes2 = expires_date2 // 60 
     print("The client credentials token is.. " + token_client)
     print("The token expires in.. " + str(expires_minutes2) + " minutes ")
 

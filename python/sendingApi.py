@@ -8,7 +8,6 @@ import csv
 import datetime
 
 load_dotenv()
-
 auth_url = "https://id.twitch.tv/oauth2/token?"
 
 
@@ -46,7 +45,7 @@ def read_clientoken_from_file():
 def main():
 
     totalAPI = 0
-    streams_url = "https://api.twitch.tv/helix/streams?first=50"
+    streams_url = "https://api.twitch.tv/helix/streams?first=100"
 
 
     auth_token = read_authtoken_from_file()
@@ -70,10 +69,10 @@ def main():
     # TWITCH REQUESTS API ////////////////////////////////////////////////
     twitch_response = requests.get(streams_url, headers=twitch_headers)
     twitch_data = json.loads(twitch_response.content)
+    logstash_counter = 0
 
     # CICLE TO STREAM ALL THE DATAS ////////////////////////////////////////////////
     for stream in twitch_data["data"]:
-
         # USER IDENTIFIER TO REFER TO FOR EACH BROADCASTER ///////////////////////////////
             user_id = stream["user_id"]
 
@@ -104,9 +103,11 @@ def main():
             games_data = json.loads(igbd_response.content)
 
 
+            genres = []  # Initialize genres as an empty list
+            total_rating = None 
             if isinstance(games_data, list) and len(games_data) > 0:
                 for game_data in games_data:
-                    if game_data.get("name").lower() == game_name.lower():
+                    if game_data.get("name") and game_data.get("name").lower() == game_name.lower():
                         aggregated_rating = game_data.get("aggregated_rating")
                         total_rating = game_data.get("total_rating")
                         release_date = game_data.get("first_release_date")
@@ -114,26 +115,31 @@ def main():
                             release_datetime = datetime.datetime.fromtimestamp(release_date)
                             release_date_formatted = release_datetime.strftime("%Y-%m-%d")
                             release_date = release_date_formatted
-                            genres = game_data.get("genres")
-                        if genres:
-                            genre_names = [genre.get("name") for genre in genres]
+                        genres = game_data.get("genres")
+                        if not genres:
+                            continue
+                        genre_names = [genre.get("name") for genre in genres]
                         break
-                else:
-                    aggregated_rating = None
-                    total_rating = None
-                    release_date = None
-                    genres = None
-            if aggregated_rating is None or total_rating is None or release_date is None or genres is None:
-                continue 
+            if not total_rating:
+                continue
 
 
 
-            print("ID: " + str(stream_id) +" | \nStreamer name  : " + str(stream['user_name']) + " |\nCurrent viewers : " + str(stream['viewer_count']) +" | \nStreamer game : " + str(stream['game_name']) + " | \nTotal_Rating : " + (str(total_rating)) + " | ")
+            
+                        # Assuming you have the following variables defined:
+            # stream_id, stream, total_rating for the streamer information
+            print(f"ID: {stream_id} |")
+            print(f"Streamer name: {stream['user_name']} |")
+            print(f"Current viewers: {stream['viewer_count']} |")
+            print(f"Streamer game: {stream['game_name']} |")
+            print(f"Total_Rating: {total_rating} |")
+            print("------------------")
+
             # IGBD REQUESTS API ////////////////////////////////////////////////
 
             timestamp = time.time()
             datetime_object = datetime.datetime.fromtimestamp(timestamp)
-            formatted_datetime = datetime_object.strftime("%Y-%m-%d %H:%M:%S")
+            formatted_datetime = datetime_object.strftime("%Y-%m-%d")
             formatted_datetime = formatted_datetime
 
             data = {
@@ -157,32 +163,35 @@ def main():
                     "genres" : genre_names
                 },
             }
-            if any(value is None for value in data.values()):
-                continue
-        
-            data_row = [
-                formatted_datetime,
-                stream['user_name'],
-                stream['language'],
-                stream['game_name'],
-                stream['viewer_count'],
-                total_rating,
-                release_date,
-                ', '.join(genre_names) if genre_names else ""
-    ]
+
+
+    #         data_row = [
+    #             formatted_datetime,
+    #             stream['user_id'],
+    #             stream['user_name'],
+    #             stream['language'],
+    #             stream['game_name'],
+    #             stream['viewer_count'],
+    #             total_rating,
+    #             release_date,
+    #             ', '.join(genre_names) if genre_names else ""
+    # ]
             data_json = json.dumps(data)
-            write_data_to_csv("data.csv", data_row)
 
             headers_log = {"Content-type": "application/json"}
             fluent_url = "http://localhost:9090"
-            requests.post(fluent_url, data=data_json, headers=headers_log)
-            totalAPI += 1
+            end_response = requests.post(fluent_url, data=data_json, headers=headers_log)
+
+
 
             stream_id += 1
 
-    print( str(totalAPI) + " Data sent successfully.")
+            if stream_id == 25:
+                break
 
+    print( str(stream_id) + " Data sent successfully.")
+        
 
-for i in range(15):
+for i in range(10):
     main()
     time.sleep(900)  # Sleep for 15 minutes (900 seconds)

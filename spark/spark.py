@@ -15,7 +15,7 @@ import csv
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import RandomForestRegressor,LinearRegression,GBTRegressor
 from pyspark.sql.types import IntegerType,DoubleType
-from pyspark.sql.functions import array_contains
+from pyspark.sql.functions import array_contains,current_timestamp
 from pyspark.sql.functions import col
 import os
 
@@ -39,6 +39,7 @@ def predict_viewers(item,data,assembler):
   new_data = spark.createDataFrame([(item["twitch-data"]["stream"]['follower_count'], item["twitch-data"]['total_rating'], item["twitch-data"]["stream"]['viewer_count'])], ["follower_count", "total_rating", "viewer_count"])
   new_data_assembled = assembler.transform(new_data)
   predicted_values = model.transform(new_data_assembled)
+
   first_prediction = predicted_values.select(col("prediction").cast("int")).first()[0]
   return first_prediction
 
@@ -123,6 +124,7 @@ def send_to_elasticsearch(batch_df: DataFrame, batch_id: int):
     df = df.withColumn("follower_count", df["follower_count"].cast(IntegerType()))
     df = df.withColumn("total_rating", df["total_rating"].cast(DoubleType()))
     df = df.withColumn("viewer_count", df["viewer_count"].cast(IntegerType()))
+    df = df.withColumn("Ptimestamp", current_timestamp())
 
     df = df.na.drop()
     selected_features = ["follower_count", "total_rating", "viewer_count"]

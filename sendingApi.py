@@ -139,7 +139,7 @@ def main():
 
             timestamp = time.time()
             datetime_object = datetime.datetime.fromtimestamp(timestamp)
-            formatted_datetime = datetime_object.strftime("%Y-%m-%d")
+            formatted_datetime = datetime_object.strftime("%Y-%m-%d %H:%M:%S")
             formatted_datetime = formatted_datetime
 
             data = {
